@@ -1,0 +1,2032 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>一控二重型双缸液压门机 HMI 演示</title>
+    <style>
+        :root {
+            --win-bg: #c0c0c0;
+            --panel-blue: #0500dc;
+            --cyan: #23d9e3;
+            --steel: #7e7e7e;
+            --shadow: #555;
+            --light: #fff;
+            --danger: #b80000;
+            --danger-light: #ffd8d8;
+            --ok: #118e35;
+            --ok-light: #d6f1dd;
+            --warn: #f0d700;
+            --warn-light: #fff4b8;
+            --text: #111;
+            --mute: #666;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #9f9f9f;
+            font-family: "SimSun", "Microsoft YaHei", sans-serif;
+            user-select: none;
+        }
+
+        .page {
+            min-height: 100vh;
+            padding: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .hmi-window {
+            width: 100%;
+            max-width: 1800px;
+            min-height: 690px;
+            background: var(--win-bg);
+            border: 2px solid var(--light);
+            border-right-color: var(--shadow);
+            border-bottom-color: var(--shadow);
+            box-shadow: 8px 8px 18px rgba(0, 0, 0, 0.28);
+        }
+
+        .hmi-header {
+            height: 34px;
+            padding: 6px 10px;
+            background: linear-gradient(to bottom, #045aa5, #00376e);
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .header-btn {
+            min-width: 20px;
+            height: 18px;
+            line-height: 16px;
+            text-align: center;
+            border: 1px solid #fff;
+            background: #bb1d1d;
+            cursor: default;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1080px minmax(0, 1fr);
+            gap: 14px;
+            padding: 14px;
+        }
+
+        @media (max-width: 1500px) {
+            .content { grid-template-columns: 1fr; }
+        }
+
+        .main-panel {
+            background: var(--panel-blue);
+            border: 2px inset #eaeaea;
+            min-height: 610px;
+            padding: 12px;
+            position: relative;
+        }
+
+        .animation-area {
+            height: 458px;
+            background: var(--cyan);
+            border: 2px inset #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .readouts {
+            position: absolute;
+            top: 14px;
+            left: 18px;
+            display: flex;
+            gap: 18px;
+            z-index: 3;
+        }
+
+        .readout {
+            width: 158px;
+            text-align: center;
+        }
+
+        .readout-value {
+            height: 54px;
+            line-height: 52px;
+            border: 2px inset #888;
+            background: #fff;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .readout-label {
+            margin-top: 8px;
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .status-text {
+            position: absolute;
+            top: 120px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #d90000;
+            display: none;
+            z-index: 3;
+        }
+
+        #status-open { left: 360px; }
+        #status-close { left: 360px; top: 154px; }
+
+        .flow-status-panel {
+            position: absolute;
+            top: 120px;
+            left: 18px;
+            width: 302px;
+            padding: 6px;
+            background: rgba(245, 245, 245, 0.92);
+            border: 2px inset #d0d0d0;
+            z-index: 4;
+        }
+
+        .panel-title {
+            margin-bottom: 5px;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .flow-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 3px;
+        }
+
+        .flow-card {
+            min-height: 24px;
+            padding: 3px 6px;
+            background: #f4f4f4;
+            border: 1px solid #8b8b8b;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .flow-card.active {
+            background: var(--ok-light);
+            border-color: #388b4a;
+        }
+
+        .flow-card.fault-active {
+            background: var(--danger-light);
+            border-color: #b22828;
+        }
+
+        .flow-name {
+            font-size: 11px;
+            color: #222;
+            font-weight: bold;
+        }
+
+        .flow-value {
+            font-size: 11px;
+            color: #000;
+        }
+
+        .cylinder {
+            position: absolute;
+            top: 86px;
+            width: 84px;
+            height: 308px;
+            border: 3px solid #444;
+            background: linear-gradient(to right, #d7d7d7, #9a9a9a 48%, #f3f3f3 52%, #7c7c7c);
+        }
+
+        .cylinder::before,
+        .cylinder::after {
+            content: "";
+            position: absolute;
+            left: 12px;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #cb2d17;
+            border: 4px solid #7b7b7b;
+        }
+
+        .cylinder::before { top: -14px; }
+        .cylinder::after { bottom: -14px; }
+        .cylinder.left { left: 332px; }
+        .cylinder.right { right: 88px; }
+
+        .gate-area {
+            position: absolute;
+            left: 406px;
+            right: 162px;
+            bottom: 16px;
+            height: 236px;
+            border-left: 12px solid #767676;
+            border-right: 12px solid #767676;
+        }
+
+        .gate {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 60px;
+            border: 2px solid #1f1f1f;
+            background: linear-gradient(to bottom, #d4d4d4, #727272 45%, #2b2b2b 100%);
+            transition: transform 0.12s linear;
+            overflow: hidden;
+        }
+
+        .gate::before,
+        .gate::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+        }
+
+        .gate::before {
+            background:
+                linear-gradient(to bottom right, transparent 49.6%, #272727 50%, transparent 50.4%),
+                linear-gradient(to top right, transparent 49.6%, #272727 50%, transparent 50.4%);
+            opacity: 0.9;
+        }
+
+        .gate::after {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.2), transparent 30%, transparent 70%, rgba(0,0,0,0.2));
+        }
+
+        .pin-indicator {
+            position: absolute;
+            bottom: 12px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #252525;
+            background: #595959;
+            box-shadow: inset 0 0 6px rgba(0,0,0,0.55);
+        }
+
+        .pin-indicator.locked {
+            background: #d31717;
+            box-shadow: 0 0 10px rgba(255,0,0,0.65);
+        }
+
+        .pin-indicator.unlocked {
+            background: #00aa33;
+            box-shadow: 0 0 10px rgba(0,220,80,0.65);
+        }
+
+        #pin-left { left: -18px; }
+        #pin-right { right: -18px; }
+
+        .main-status {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 130px;
+            display: grid;
+            gap: 12px;
+            z-index: 5;
+        }
+
+        .status-box {
+            min-height: 54px;
+            border: 2px inset #888;
+            background: #fff;
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 4px;
+        }
+
+        .actuator-group {
+            position: absolute;
+            z-index: 4;
+            background: rgba(250, 250, 250, 0.82);
+            border: 1px solid #868686;
+            padding: 6px;
+            display: grid;
+            gap: 4px;
+            min-width: 126px;
+        }
+
+        .actuator-group.left {
+            left: 18px;
+            bottom: 16px;
+        }
+
+        .actuator-group.right {
+            right: 18px;
+            bottom: 16px;
+        }
+
+        .actuator-group.lock {
+            left: 424px;
+            bottom: 16px;
+            width: 280px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 10px;
+        }
+
+        .actuator-group .panel-title {
+            margin-bottom: 2px;
+            font-size: 13px;
+            grid-column: 1 / -1;
+        }
+
+        .actuator-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 18px;
+        }
+
+        .actuator-row .lamp {
+            width: 14px;
+            height: 14px;
+            border-width: 1px;
+            flex: 0 0 auto;
+        }
+
+        .actuator-label {
+            font-size: 11px;
+            color: #111;
+            white-space: nowrap;
+        }
+
+        .bottom-controls {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            border: 2px outset #fff;
+            background: #bdbdbd;
+            color: #111;
+            font-weight: bold;
+            font-size: 18px;
+            min-height: 40px;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        .btn:active { border-style: inset; }
+        .btn.small { font-size: 15px; min-height: 38px; }
+        .btn.dark { color: #f7f7f7; background: linear-gradient(to bottom, #787878, #4b4b4b); }
+        .btn.block { width: 100%; }
+
+        .bottom-controls .btn {
+            height: 58px;
+            font-size: 20px;
+        }
+
+        .bottom-controls .btn.stop {
+            height: 66px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to bottom, #ef4747, #a90000);
+        }
+
+        .bottom-controls .btn.command {
+            color: #a90000;
+            background: linear-gradient(to bottom, #dadada, #b7b7b7);
+        }
+
+        .debug-panel {
+            background: #e6e6e6;
+            border: 1px solid #7e7e7e;
+            padding: 12px;
+            font-family: "Consolas", "Courier New", monospace;
+            font-size: 12px;
+            min-height: 0;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .debug-panel h3 {
+            margin: 0 0 8px 0;
+            font-family: "Microsoft YaHei", sans-serif;
+            font-size: 16px;
+            border-bottom: 1px solid #aaa;
+            padding-bottom: 6px;
+            grid-column: 1 / -1;
+        }
+
+        .section {
+            margin-bottom: 0;
+        }
+
+        .section.wide {
+            grid-column: 1 / -1;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #333;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .section-note {
+            margin-bottom: 6px;
+            color: var(--mute);
+            font-size: 11px;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 90px;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .param-grid input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #999;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .aux-controls {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .aux-controls .wide {
+            grid-column: 1 / -1;
+        }
+
+        .lock-control-row {
+            display: grid;
+            grid-template-columns: 1fr 28px;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .lamp {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px inset #fff;
+            background: #666;
+            flex: 0 0 auto;
+        }
+
+        .lamp.red { background: #c91f1f; box-shadow: 0 0 10px rgba(255,0,0,0.55); }
+        .lamp.green { background: #0ab53b; box-shadow: 0 0 10px rgba(0,220,80,0.55); }
+        .lamp.yellow { background: #f0d700; box-shadow: 0 0 10px rgba(255,225,0,0.55); }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 8px;
+        }
+
+        .kv > div {
+            background: #fff;
+            border: 1px solid #c8c8c8;
+            padding: 4px 6px;
+        }
+
+        .sim-controls {
+            display: grid;
+            gap: 6px;
+        }
+
+        .slider-box {
+            background: #f2f2f2;
+            border: 1px solid #b0b0b0;
+            padding: 8px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .slider-row {
+            display: grid;
+            grid-template-columns: 78px 1fr 52px;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .slider-row label,
+        .slider-row span {
+            font-family: "Microsoft YaHei", sans-serif;
+            font-size: 12px;
+            color: #222;
+        }
+
+        .slider-row input[type="range"] {
+            width: 100%;
+        }
+
+        .sim-controls .btn {
+            background: linear-gradient(to bottom, #d8d8d8, #bdbdbd);
+            color: #222;
+            font-size: 14px;
+        }
+
+        .sim-controls .btn.active-sim {
+            color: #fff;
+            background: linear-gradient(to bottom, #4086d8, #1b4f9d);
+        }
+
+        .sim-controls .btn.red {
+            color: #fff;
+            background: linear-gradient(to bottom, #cf4444, #8b1717);
+        }
+
+        .io-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            max-height: 148px;
+            overflow-y: auto;
+        }
+
+        .io-item {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 3px 5px;
+        }
+
+        .io-item.on {
+            background: #cff2d6;
+            font-weight: bold;
+        }
+
+        .io-item.fault {
+            background: #e12d2d;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .manual-panel {
+            display: grid;
+            gap: 6px;
+        }
+
+        .manual-panel.disabled {
+            opacity: 0.45;
+            pointer-events: none;
+        }
+
+        .manual-row {
+            display: grid;
+            grid-template-columns: 90px 1fr 1fr;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .manual-row label {
+            font-family: "Microsoft YaHei", sans-serif;
+            font-size: 12px;
+        }
+
+        .manual-row .btn {
+            font-size: 12px;
+            min-height: 28px;
+            padding: 2px 6px;
+        }
+
+        .manual-row .btn.on {
+            background: linear-gradient(to bottom, #4086d8, #1b4f9d);
+            color: #fff;
+        }
+
+        .valve-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0,1fr));
+            gap: 4px;
+        }
+
+        .valve-grid .btn {
+            font-size: 11px;
+            min-height: 30px;
+            padding: 2px 4px;
+        }
+
+        .valve-grid .btn.held {
+            background: linear-gradient(to bottom, #4086d8, #1b4f9d);
+            color: #fff;
+        }
+
+        .indicator-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            background: #d8d8d8;
+            border: 1px inset #eaeaea;
+            padding: 6px 10px;
+            justify-content: space-around;
+        }
+
+        .indicator-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 50px;
+        }
+
+        .indicator-cell .lamp {
+            width: 14px;
+            height: 14px;
+            border-width: 1px;
+        }
+
+        .indicator-cell span {
+            font-size: 10px;
+            margin-top: 2px;
+            color: #111;
+        }
+
+        .fault-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .fault-tag {
+            padding: 2px 6px;
+            font-size: 11px;
+            border: 1px solid #aaa;
+            background: #f0f0f0;
+            border-radius: 3px;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .fault-tag.active {
+            background: #e12d2d;
+            color: #fff;
+            border-color: #8a1010;
+            font-weight: bold;
+        }
+
+        .log {
+            height: 190px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #c8c8c8;
+            padding: 6px;
+            line-height: 1.45;
+            font-family: "Consolas", "Microsoft YaHei", monospace;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="hmi-window">
+        <div class="hmi-header">
+            <span>动画组态窗口0 -- 一控二重型双缸液压门机 HMI 演示</span>
+            <span class="header-btn">X</span>
+        </div>
+
+        <div class="content">
+            <div class="main-panel">
+                <div class="animation-area">
+                    <div class="readouts">
+                        <div class="readout">
+                            <div class="readout-value" id="disp-left">0.0</div>
+                            <div class="readout-label">左油缸位置(m)</div>
+                        </div>
+                        <div class="readout">
+                            <div class="readout-value" id="disp-bias">0.0</div>
+                            <div class="readout-label">偏差(m)</div>
+                        </div>
+                        <div class="readout">
+                            <div class="readout-value" id="disp-right">0.0</div>
+                            <div class="readout-label">右油缸位置(m)</div>
+                        </div>
+                    </div>
+
+                    <div id="status-open" class="status-text">开门运行中</div>
+                    <div id="status-close" class="status-text">关门运行中</div>
+
+                    <div class="flow-status-panel">
+                        <div class="panel-title">流程状态区</div>
+                        <div id="flow-grid" class="flow-grid"></div>
+                    </div>
+
+                    <div class="cylinder left"></div>
+                    <div class="cylinder right"></div>
+
+                    <div class="main-status">
+                        <div id="open-ready" class="status-box">开门到位</div>
+                        <div id="close-ready" class="status-box">关门到位</div>
+                    </div>
+
+                    <div class="actuator-group left">
+                        <div class="panel-title">左侧执行器</div>
+                        <div id="lamp-q00" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.0 左主泵</div></div>
+                        <div id="lamp-q04" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.4 左开阀</div></div>
+                        <div id="lamp-q05" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.5 左关阀</div></div>
+                        <div id="lamp-q120" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q12.0 左减速阀</div></div>
+                        <div id="lamp-m16" class="actuator-row"><div class="lamp"></div><div class="actuator-label">M1.6 左暂停</div></div>
+                    </div>
+
+                    <div class="actuator-group right">
+                        <div class="panel-title">右侧执行器</div>
+                        <div id="lamp-q01" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.1 右主泵</div></div>
+                        <div id="lamp-q06" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.6 右开阀</div></div>
+                        <div id="lamp-q07" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.7 右关阀</div></div>
+                        <div id="lamp-q121" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q12.1 右减速阀</div></div>
+                        <div id="lamp-m17" class="actuator-row"><div class="lamp"></div><div class="actuator-label">M1.7 右暂停</div></div>
+                    </div>
+
+                    <div class="gate-area">
+                        <div id="pin-left" class="pin-indicator"></div>
+                        <div id="pin-right" class="pin-indicator"></div>
+                        <div id="gate" class="gate"></div>
+                    </div>
+
+                    <div class="actuator-group lock">
+                        <div class="panel-title">插销机构</div>
+                        <div id="lamp-q02" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.2 左锁电机</div></div>
+                        <div id="lamp-q03" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q0.3 右锁电机</div></div>
+                        <div id="lamp-q10" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q1.0 左伸出阀</div></div>
+                        <div id="lamp-q11" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q1.1 左缩回阀</div></div>
+                        <div id="lamp-q12" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q1.2 右伸出阀</div></div>
+                        <div id="lamp-q13" class="actuator-row"><div class="lamp"></div><div class="actuator-label">Q1.3 右缩回阀</div></div>
+                    </div>
+                </div>
+
+                <div id="indicator-row" class="indicator-row">
+                    <div class="indicator-cell"><div id="ind-v204" class="lamp"></div><span>V20.4 左开</span></div>
+                    <div class="indicator-cell"><div id="ind-v205" class="lamp"></div><span>V20.5 右开</span></div>
+                    <div class="indicator-cell"><div id="ind-v206" class="lamp"></div><span>V20.6 左关</span></div>
+                    <div class="indicator-cell"><div id="ind-v207" class="lamp"></div><span>V20.7 右关</span></div>
+                    <div class="indicator-cell"><div id="ind-q122" class="lamp"></div><span>Q12.2 运行</span></div>
+                    <div class="indicator-cell"><div id="ind-q123" class="lamp"></div><span>Q12.3 电源</span></div>
+                    <div class="indicator-cell"><div id="ind-q124" class="lamp"></div><span>Q12.4 故障</span></div>
+                </div>
+
+                <div class="bottom-controls">
+                    <button id="btn-open" class="btn command">开门</button>
+                    <button id="btn-stop" class="btn stop">停止</button>
+                    <button id="btn-close" class="btn command">关门</button>
+                </div>
+            </div>
+
+            <div class="debug-panel">
+                <h3>PLC 逻辑监控与演示控制</h3>
+
+                <div class="section">
+                    <div class="section-title">参数区</div>
+                    <div class="param-grid">
+                        <label for="p-vd100">VD100 开门目标(m)</label>
+                        <input id="p-vd100" type="number" step="0.01">
+                        <label for="p-vd104">VD104 关门目标(m)</label>
+                        <input id="p-vd104" type="number" step="0.01">
+                        <label for="p-vw108">VW108 建压延时(100ms)</label>
+                        <input id="p-vw108" type="number" step="1">
+                        <label for="p-vd112">VD112 一级纠偏(m)</label>
+                        <input id="p-vd112" type="number" step="0.01">
+                        <label for="p-vd116">VD116 二级硬停(m)</label>
+                        <input id="p-vd116" type="number" step="0.01">
+                        <label for="p-vd120">VD120 防下滑阈值(m)</label>
+                        <input id="p-vd120" type="number" step="0.01">
+                    </div>
+                    <div style="margin-top:8px;">
+                        <button id="btn-apply-params" class="btn small block">应用参数</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">正式辅助控制区</div>
+                    <div class="aux-controls">
+                        <button class="btn small dark">登录</button>
+                        <button class="btn small dark">退出</button>
+                        <button id="btn-reset" class="btn small wide">故障复位</button>
+                        <button class="btn small dark">参数设置</button>
+                        <button id="btn-toggle-mode" class="btn small dark">切到手动模式</button>
+                        <div class="lock-control-row">
+                            <button id="btn-lock" class="btn small dark">插销锁定</button>
+                            <div id="lamp-lock" class="lamp"></div>
+                        </div>
+                        <div class="lock-control-row">
+                            <button id="btn-unlock" class="btn small dark">插销解锁</button>
+                            <div id="lamp-unlock" class="lamp"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">关键调试状态区</div>
+                    <div id="state-kv" class="kv"></div>
+                    <div class="section-title" style="margin-top:6px;">故障源（M1.0 触发输入）</div>
+                    <div id="fault-tags" class="fault-tags"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">手动操作区（仅手动模式下生效）</div>
+                    <div id="manual-panel" class="manual-panel disabled">
+                        <div class="manual-row">
+                            <label>左主泵 M30.0</label>
+                            <button id="m-v30-0" class="btn small">起动 V30.0</button>
+                            <button id="m-v30-1" class="btn small">停止 V30.1</button>
+                        </div>
+                        <div class="manual-row">
+                            <label>右主泵 M30.1</label>
+                            <button id="m-v30-2" class="btn small">起动 V30.2</button>
+                            <button id="m-v30-3" class="btn small">停止 V30.3</button>
+                        </div>
+                        <div class="manual-row">
+                            <label>左锁电机 M30.2</label>
+                            <button id="m-v30-4" class="btn small">起动 V30.4</button>
+                            <button id="m-v30-5" class="btn small">停止 V30.5</button>
+                        </div>
+                        <div class="manual-row">
+                            <label>右锁电机 M30.3</label>
+                            <button id="m-v30-6" class="btn small">起动 V30.6</button>
+                            <button id="m-v30-7" class="btn small">停止 V30.7</button>
+                        </div>
+                        <div class="section-note" style="margin-top:2px;">下方阀按钮：按住有效，松开停止（点动）</div>
+                        <div class="valve-grid">
+                            <button id="m-v31-0" class="btn small">V31.0 左开 Q0.4</button>
+                            <button id="m-v31-1" class="btn small">V31.1 左关 Q0.5</button>
+                            <button id="m-v31-2" class="btn small">V31.2 右开 Q0.6</button>
+                            <button id="m-v31-3" class="btn small">V31.3 右关 Q0.7</button>
+                            <button id="m-v31-4" class="btn small">V31.4 左伸 Q1.0</button>
+                            <button id="m-v31-5" class="btn small">V31.5 左缩 Q1.1</button>
+                            <button id="m-v31-6" class="btn small">V31.6 右伸 Q1.2</button>
+                            <button id="m-v31-7" class="btn small">V31.7 右缩 Q1.3</button>
+                        </div>
+                        <div class="manual-row">
+                            <label>编码置零</label>
+                            <button id="m-v11-0" class="btn small">V11.0 左置零</button>
+                            <button id="m-v11-1" class="btn small">V11.1 右置零</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">模拟事件（测试用）</div>
+                    <div class="section-note">以下按钮仅用于演示触发，不属于正式 HMI 操作。</div>
+                    <div class="sim-controls">
+                        <div class="slider-box">
+                            <div class="section-note" style="margin-bottom:0;">自动模式下可直接拖动油缸位置，单位 m，用于模拟下滑或人为制造偏差。</div>
+                            <div class="slider-row">
+                                <label for="sim-left-pos">左缸位置</label>
+                                <input id="sim-left-pos" type="range" min="0" max="3" step="0.01">
+                                <span id="sim-left-pos-text">0</span>
+                            </div>
+                            <div class="slider-row">
+                                <label for="sim-right-pos">右缸位置</label>
+                                <input id="sim-right-pos" type="range" min="0" max="3" step="0.01">
+                                <span id="sim-right-pos-text">0</span>
+                            </div>
+                        </div>
+                        <button id="sim-open-hold" class="btn small block">模拟开门（只点亮不走位置）</button>
+                        <button id="sim-close-hold" class="btn small block">模拟关门（只点亮不走位置）</button>
+                        <button id="sim-leak-left" class="btn small block">模拟左缸静止内泄</button>
+                        <button id="sim-leak-right" class="btn small block">模拟右缸静止内泄</button>
+                        <button id="sim-sync-left" class="btn small block">模拟左缸超前</button>
+                        <button id="sim-sync-right" class="btn small block">模拟右缸超前</button>
+                        <button id="sim-i00" class="btn small block">外部按钮 I0.0 开门一周期</button>
+                        <button id="sim-i01" class="btn small block">外部按钮 I0.1 停止一周期</button>
+                        <button id="sim-i02" class="btn small block">外部按钮 I0.2 关门一周期</button>
+                        <button id="sim-estop" class="btn small red block">触发急停 I0.3</button>
+                        <button id="sim-thermal-main" class="btn small block">触发主泵热继 I1.2/I1.3</button>
+                        <button id="sim-thermal-lock" class="btn small block">触发锁泵热继 I1.4/I1.5</button>
+                        <button id="sim-clear-fault-inputs" class="btn small block">恢复急停与热继输入</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">I / Q / M 监控</div>
+                    <div id="io-grid" class="io-grid"></div>
+                </div>
+
+                <div class="section wide">
+                    <div class="section-title">事件日志</div>
+                    <div id="log" class="log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const SCAN_MS = 100;
+    const PHYS = {
+        gateMax: 3.0,
+        gateMin: 0,
+        moveFast: 0.05,
+        moveSlow: 0.015,
+        lockTravel: 10,
+        lockPositionTolerance: 0.05,
+        readyMargin: 0.1
+    };
+
+    const mem = {
+        I: {
+            "0.0": 0, "0.1": 0, "0.2": 0, "0.3": 1,
+            "0.6": 1, "0.7": 1,
+            "1.0": 0, "1.1": 0,
+            "1.2": 0, "1.3": 0, "1.4": 0, "1.5": 0,
+            "1.6": 0
+        },
+        Q: {
+            "0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0,
+            "0.4": 0, "0.5": 0, "0.6": 0, "0.7": 0,
+            "1.0": 0, "1.1": 0, "1.2": 0, "1.3": 0,
+            "12.0": 0, "12.1": 0, "12.2": 0, "12.3": 1, "12.4": 0
+        },
+        M: {
+            "1.0": 0, "1.6": 0, "1.7": 0,
+            "2.0": 0, "2.1": 0, "2.2": 0, "2.3": 0,
+            "3.0": 0, "3.1": 0, "4.0": 0,
+            "30.0": 0, "30.1": 0, "30.2": 0, "30.3": 0
+        },
+        V: {
+            "10.0": 0, "10.1": 0, "10.2": 0, "10.3": 0, "10.4": 0, "10.5": 0,
+            "11.0": 0, "11.1": 0,
+            "30.0": 0, "30.1": 0, "30.2": 0, "30.3": 0,
+            "30.4": 0, "30.5": 0, "30.6": 0, "30.7": 0,
+            "31.0": 0, "31.1": 0, "31.2": 0, "31.3": 0,
+            "31.4": 0, "31.5": 0, "31.6": 0, "31.7": 0
+        },
+        VD100: 3.0,
+        VD104: 0,
+        VW108: 30,
+        VD112: 0.05,
+        VD116: 0.10,
+        VD120: 0.10,
+        VD190: 0,
+        VD194: 0,
+        VD200: 0,
+        VD204: 0,
+        VD208: 0,
+        VD212: 0,
+        VD216: 0,
+        VD220: 0,
+        VD400: 0,
+        VD404: 0,
+        VD500: 0,
+        VD504: 0,
+        VD508: 0,
+        VD512: 0,
+        VD516: 0,
+        VD520: 0
+    };
+
+    const timers = {
+        T37: 0, T38: 0, T39: 0, T40: 0, T41: 0, T44: 0, T45: 0
+    };
+
+    const pulses = {
+        openBiasLeft: 0,
+        openBiasRight: 0,
+        leakLeft: 0,
+        leakRight: 0,
+        i00: 0,
+        i01: 0,
+        i02: 0
+    };
+
+    const simMotionHold = {
+        mode: ""
+    };
+
+    let scanCount = 0;
+    let lockPosLeft = 100;
+    let lockPosRight = 100;
+
+    const transitionState = {
+        t37Done: false,
+        q120: false,
+        q121: false,
+        m16: false,
+        m17: false,
+        m22: false,
+        m23: false,
+        m40: false,
+        m10: false
+    };
+
+    const flowStatusDefs = [
+        { key: "mode", label: "当前模式", type: "mode" },
+        { key: "2.0", label: "M2.0", text: "开门运行" },
+        { key: "2.1", label: "M2.1", text: "关门运行" },
+        { key: "2.2", label: "M2.2", text: "左补压中" },
+        { key: "2.3", label: "M2.3", text: "右补压中" },
+        { key: "3.0", label: "M3.0", text: "总锁定中" },
+        { key: "3.1", label: "M3.1", text: "总解锁中" },
+        { key: "1.0", label: "M1.0", text: "系统故障", fault: true },
+        { key: "1.6", label: "M1.6", text: "左暂停", fault: true },
+        { key: "1.7", label: "M1.7", text: "右暂停", fault: true },
+        { key: "4.0", label: "M4.0", text: "开到位" }
+    ];
+
+    const actuatorLampDefs = {
+        "lamp-q00": { kind: "Q", key: "0.0", color: "green" },
+        "lamp-q04": { kind: "Q", key: "0.4", color: "green" },
+        "lamp-q05": { kind: "Q", key: "0.5", color: "green" },
+        "lamp-q120": { kind: "Q", key: "12.0", color: "yellow" },
+        "lamp-m16": { kind: "M", key: "1.6", color: "red" },
+        "lamp-q01": { kind: "Q", key: "0.1", color: "green" },
+        "lamp-q06": { kind: "Q", key: "0.6", color: "green" },
+        "lamp-q07": { kind: "Q", key: "0.7", color: "green" },
+        "lamp-q121": { kind: "Q", key: "12.1", color: "yellow" },
+        "lamp-m17": { kind: "M", key: "1.7", color: "red" },
+        "lamp-q02": { kind: "Q", key: "0.2", color: "green" },
+        "lamp-q03": { kind: "Q", key: "0.3", color: "green" },
+        "lamp-q10": { kind: "Q", key: "1.0", color: "green" },
+        "lamp-q11": { kind: "Q", key: "1.1", color: "green" },
+        "lamp-q12": { kind: "Q", key: "1.2", color: "green" },
+        "lamp-q13": { kind: "Q", key: "1.3", color: "green" }
+    };
+
+    const el = {
+        left: document.getElementById("disp-left"),
+        right: document.getElementById("disp-right"),
+        bias: document.getElementById("disp-bias"),
+        openStatus: document.getElementById("status-open"),
+        closeStatus: document.getElementById("status-close"),
+        gate: document.getElementById("gate"),
+        pinLeft: document.getElementById("pin-left"),
+        pinRight: document.getElementById("pin-right"),
+        lampLock: document.getElementById("lamp-lock"),
+        lampUnlock: document.getElementById("lamp-unlock"),
+        openReady: document.getElementById("open-ready"),
+        closeReady: document.getElementById("close-ready"),
+        ioGrid: document.getElementById("io-grid"),
+        stateKv: document.getElementById("state-kv"),
+        flowGrid: document.getElementById("flow-grid"),
+        log: document.getElementById("log"),
+        btnToggleMode: document.getElementById("btn-toggle-mode"),
+        simLeftPos: document.getElementById("sim-left-pos"),
+        simRightPos: document.getElementById("sim-right-pos"),
+        simLeftPosText: document.getElementById("sim-left-pos-text"),
+        simRightPosText: document.getElementById("sim-right-pos-text"),
+        simOpenHold: document.getElementById("sim-open-hold"),
+        simCloseHold: document.getElementById("sim-close-hold"),
+        pVD100: document.getElementById("p-vd100"),
+        pVD104: document.getElementById("p-vd104"),
+        pVW108: document.getElementById("p-vw108"),
+        pVD112: document.getElementById("p-vd112"),
+        pVD116: document.getElementById("p-vd116"),
+        pVD120: document.getElementById("p-vd120")
+    };
+
+    const bool = (value) => value ? 1 : 0;
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+    function nowStamp() {
+        const d = new Date();
+        return d.toLocaleTimeString("zh-CN", { hour12: false });
+    }
+
+    function log(message) {
+        const line = document.createElement("div");
+        line.textContent = `${nowStamp()} ${message}`;
+        el.log.appendChild(line);
+        el.log.scrollTop = el.log.scrollHeight;
+    }
+
+    function pulseV(key) {
+        mem.V[key] = 1;
+    }
+
+    const PULSE_V_KEYS = [
+        "10.0","10.1","10.2","10.3","10.4","10.5",
+        "11.0","11.1",
+        "30.0","30.1","30.2","30.3","30.4","30.5","30.6","30.7"
+    ];
+    function clearPulses() {
+        for (const key of PULSE_V_KEYS) mem.V[key] = 0;
+        if (pulses.i00) { mem.I["0.0"] = 0; pulses.i00 = 0; }
+        if (pulses.i01) { mem.I["0.1"] = 0; pulses.i01 = 0; }
+        if (pulses.i02) { mem.I["0.2"] = 0; pulses.i02 = 0; }
+    }
+
+    function processManualLatches() {
+        // 手动模式 段1~8: V30.x SET/R M30.x
+        if (mem.V["30.0"]) mem.M["30.0"] = 1;
+        if (mem.V["30.1"]) mem.M["30.0"] = 0;
+        if (mem.V["30.2"]) mem.M["30.1"] = 1;
+        if (mem.V["30.3"]) mem.M["30.1"] = 0;
+        if (mem.V["30.4"]) mem.M["30.2"] = 1;
+        if (mem.V["30.5"]) mem.M["30.2"] = 0;
+        if (mem.V["30.6"]) mem.M["30.3"] = 1;
+        if (mem.V["30.7"]) mem.M["30.3"] = 0;
+        // 手动模式 段17: M1.0 OR I1.6/ → R M30.0~M30.3 4位
+        if (mem.M["1.0"] || !mem.I["1.6"]) {
+            mem.M["30.0"] = 0;
+            mem.M["30.1"] = 0;
+            mem.M["30.2"] = 0;
+            mem.M["30.3"] = 0;
+            // 切到自动时清掉手动残留阀位输出
+            mem.V["31.0"] = 0; mem.V["31.1"] = 0;
+            mem.V["31.2"] = 0; mem.V["31.3"] = 0;
+            mem.V["31.4"] = 0; mem.V["31.5"] = 0;
+            mem.V["31.6"] = 0; mem.V["31.7"] = 0;
+        }
+    }
+
+    function updateDerivedValues() {
+        mem.VD200 = mem.VD208 - mem.VD216;
+        mem.VD204 = mem.VD212 - mem.VD220;
+        mem.VD190 = mem.VD208 * 1000;
+        mem.VD194 = mem.VD212 * 1000;
+        mem.VD400 = mem.VD200 - mem.VD204;
+        mem.VD404 = mem.VD204 - mem.VD200;
+        mem.VD500 = mem.VD100 - PHYS.readyMargin;
+        mem.VD504 = mem.VD100 - PHYS.readyMargin;
+        mem.VD508 = mem.VD104 + PHYS.readyMargin;
+        mem.VD512 = mem.VD104 + PHYS.readyMargin;
+        mem.VD516 = mem.VD100 - mem.VD120;
+        mem.VD520 = mem.VD100 - mem.VD120;
+    }
+
+    function setTimer(name, condition, preset) {
+        if (condition) {
+            timers[name] = Math.min(timers[name] + 1, preset);
+        } else {
+            timers[name] = 0;
+        }
+    }
+
+    function timerDone(name, preset) {
+        return timers[name] >= preset;
+    }
+
+    function applyPhysicalLeak() {
+        if (pulses.leakLeft > 0) {
+            mem.VD208 = Math.max(mem.VD104 + mem.VD216, mem.VD208 - pulses.leakLeft);
+        }
+        if (pulses.leakRight > 0) {
+            mem.VD212 = Math.max(mem.VD104 + mem.VD220, mem.VD212 - pulses.leakRight);
+        }
+    }
+
+    function updateLockSensors() {
+        lockPosLeft = clamp(lockPosLeft, 0, 100);
+        lockPosRight = clamp(lockPosRight, 0, 100);
+        mem.I["0.6"] = bool(lockPosLeft >= 100);
+        mem.I["0.7"] = bool(lockPosRight >= 100);
+        mem.I["1.0"] = bool(lockPosLeft <= 0);
+        mem.I["1.1"] = bool(lockPosRight <= 0);
+    }
+
+    function lockMotorAndValvePhysics() {
+        if (mem.Q["1.0"]) lockPosLeft += PHYS.lockTravel;
+        if (mem.Q["1.1"]) lockPosLeft -= PHYS.lockTravel;
+        if (mem.Q["1.2"]) lockPosRight += PHYS.lockTravel;
+        if (mem.Q["1.3"]) lockPosRight -= PHYS.lockTravel;
+        updateLockSensors();
+    }
+
+    function safeReadyForReset() {
+        return mem.I["0.3"] === 1 &&
+            mem.I["1.2"] === 0 &&
+            mem.I["1.3"] === 0 &&
+            mem.I["1.4"] === 0 &&
+            mem.I["1.5"] === 0;
+    }
+
+    function processFaultLogic() {
+        if (
+            mem.I["0.3"] === 0 ||
+            mem.I["1.2"] === 1 ||
+            mem.I["1.3"] === 1 ||
+            mem.I["1.4"] === 1 ||
+            mem.I["1.5"] === 1
+        ) {
+            mem.M["1.0"] = 1;
+        }
+
+        if (mem.V["10.4"] && safeReadyForReset()) {
+            mem.M["1.0"] = 0;
+            log("故障复位成立，M1.0 已清除。");
+        }
+
+        if (mem.M["1.0"]) {
+            mem.M["2.0"] = 0;
+            mem.M["2.1"] = 0;
+            mem.M["2.2"] = 0;
+            mem.M["2.3"] = 0;
+            simMotionHold.mode = "";
+        }
+    }
+
+    function processManualZero() {
+        if (mem.V["11.0"] && mem.I["1.6"] === 1) {
+            mem.VD216 = mem.VD208;
+            log("左油缸执行置零，更新 VD216。");
+        }
+        if (mem.V["11.1"] && mem.I["1.6"] === 1) {
+            mem.VD220 = mem.VD212;
+            log("右油缸执行置零，更新 VD220。");
+        }
+    }
+
+    function processAutoStart() {
+        if (mem.M["1.0"]) return;
+        if (mem.I["1.6"] === 1) return;
+
+        if (
+            (mem.V["10.0"] || mem.I["0.0"]) &&
+            mem.I["1.0"] &&
+            mem.I["1.1"] &&
+            !mem.M["2.1"] &&
+            !mem.M["3.0"] &&
+            !mem.M["3.1"]
+        ) {
+            simMotionHold.mode = "";
+            mem.M["2.0"] = 1;
+            log("开门命令触发（HMI/外部按钮），自动开门启动，置位 M2.0。");
+        }
+
+        if (
+            (mem.V["10.1"] || mem.I["0.2"]) &&
+            mem.I["1.0"] &&
+            mem.I["1.1"] &&
+            !mem.M["2.0"] &&
+            !mem.M["3.0"] &&
+            !mem.M["3.1"]
+        ) {
+            simMotionHold.mode = "";
+            mem.M["2.1"] = 1;
+            log("关门命令触发（HMI/外部按钮），自动关门启动，置位 M2.1。");
+        }
+    }
+
+    function processStop() {
+        if (mem.V["10.5"] || mem.I["0.1"] || mem.M["1.0"]) {
+            const before = mem.M["2.0"] || mem.M["2.1"] || mem.M["2.2"] || mem.M["2.3"];
+            mem.M["2.0"] = 0;
+            mem.M["2.1"] = 0;
+            mem.M["2.2"] = 0;
+            mem.M["2.3"] = 0;
+            simMotionHold.mode = "";
+            if (before) {
+                log("停止命令触发，复位自动与补压流程位 M2.0~M2.3。");
+            }
+        }
+    }
+
+    function processOpenCloseCompletion() {
+        if (mem.M["2.0"] && mem.VD200 >= mem.VD100 && mem.VD204 >= mem.VD100) {
+            mem.M["2.0"] = 0;
+            simMotionHold.mode = "";
+            log("开门到位，复位 M2.0。");
+        }
+        if (mem.M["2.1"] && mem.VD200 <= mem.VD104 && mem.VD204 <= mem.VD104) {
+            mem.M["2.1"] = 0;
+            simMotionHold.mode = "";
+            log("关门到位，复位 M2.1。");
+        }
+    }
+
+    function processCompensationPermit() {
+        const setCondition =
+            !mem.M["1.0"] &&
+            !mem.M["2.1"] &&
+            mem.I["1.0"] &&
+            mem.I["1.1"] &&
+            mem.VD200 >= mem.VD100 &&
+            mem.VD204 >= mem.VD100;
+
+        if (setCondition) {
+            mem.M["4.0"] = 1;
+        }
+
+        if (mem.M["2.1"] || mem.M["3.0"] || mem.M["1.0"] || mem.I["1.6"]) {
+            mem.M["4.0"] = 0;
+        }
+    }
+
+    function processCompensationTrigger() {
+        if (mem.M["1.0"] || mem.I["1.6"] === 1) return;
+        const allIdle = !mem.M["2.0"] && !mem.M["2.1"] && !mem.M["2.2"] && !mem.M["2.3"] && !mem.M["3.0"] && !mem.M["3.1"];
+        if (!allIdle) return;
+
+        if (mem.M["4.0"] && !mem.I["0.6"] && mem.I["1.0"] && mem.VD200 <= mem.VD516) {
+            mem.M["2.2"] = 1;
+        }
+        if (mem.M["4.0"] && !mem.I["0.7"] && mem.I["1.1"] && mem.VD204 <= mem.VD520) {
+            mem.M["2.3"] = 1;
+        }
+    }
+
+    function processCompensationFinish() {
+        setTimer("T38", mem.M["2.2"] && mem.VD200 >= mem.VD100, 10);
+        setTimer("T39", mem.M["2.3"] && mem.VD204 >= mem.VD100, 10);
+        if (timerDone("T38", 10)) {
+            mem.M["2.2"] = 0;
+            log("左补压达到目标并完成 1 秒稳压，复位 M2.2。");
+        }
+        if (timerDone("T39", 10)) {
+            mem.M["2.3"] = 0;
+            log("右补压达到目标并完成 1 秒稳压，复位 M2.3。");
+        }
+    }
+
+    function processCompensationTimeout() {
+        setTimer("T44", mem.M["2.2"], 500);
+        setTimer("T45", mem.M["2.3"], 500);
+        if (timerDone("T44", 500) || timerDone("T45", 500)) {
+            mem.M["1.0"] = 1;
+            log("补压超过最大动作时间，置位 M1.0。");
+        }
+    }
+
+    function processT37() {
+        const anyHydraulicAction = mem.M["2.0"] || mem.M["2.1"] || mem.M["2.2"] || mem.M["2.3"];
+        setTimer("T37", anyHydraulicAction && !mem.M["1.0"], mem.VW108);
+    }
+
+    function processSyncPause() {
+        const leftLeadForPause =
+            (mem.M["2.0"] && mem.VD400 > mem.VD116) ||
+            (mem.M["2.1"] && mem.VD404 > mem.VD116);
+        const rightLeadForPause =
+            (mem.M["2.0"] && mem.VD404 > mem.VD116) ||
+            (mem.M["2.1"] && mem.VD400 > mem.VD116);
+
+        const leftRecover =
+            (mem.M["2.0"] && mem.VD400 <= mem.VD112) ||
+            (mem.M["2.1"] && mem.VD404 <= mem.VD112);
+        const rightRecover =
+            (mem.M["2.0"] && mem.VD404 <= mem.VD112) ||
+            (mem.M["2.1"] && mem.VD400 <= mem.VD112);
+
+        if (leftLeadForPause) mem.M["1.6"] = 1;
+        if (rightLeadForPause) mem.M["1.7"] = 1;
+        if (leftRecover) mem.M["1.6"] = 0;
+        if (rightRecover) mem.M["1.7"] = 0;
+    }
+
+    function processLockUnlockFlow() {
+        if (mem.M["1.0"]) {
+            mem.M["3.0"] = 0;
+            mem.M["3.1"] = 0;
+        }
+
+        if (mem.V["10.2"] && !mem.M["3.1"] && !mem.M["1.0"] && !mem.M["2.0"] && !mem.M["2.1"]) {
+            if (mem.M["4.0"]) {
+                mem.M["3.0"] = 1;
+                log("锁定命令触发：M4.0 开门保持允许位成立，启动一键锁定流程，置位 M3.0。");
+            } else {
+                log("锁定被拒绝：M4.0 未成立，门未确认开到位，不允许插销锁定。");
+            }
+        }
+
+        if (mem.V["10.3"] && !mem.M["3.0"] && !mem.M["1.0"] && !mem.M["2.0"] && !mem.M["2.1"]) {
+            mem.M["3.1"] = 1;
+            log("解锁命令触发，启动一键解锁流程，置位 M3.1。");
+        }
+
+        setTimer("T40", mem.M["3.0"], 30);
+        setTimer("T41", mem.M["3.1"], 30);
+
+        if ((mem.I["0.6"] && mem.I["0.7"]) || mem.M["1.0"]) {
+            if (mem.M["3.0"]) log("锁定流程结束。");
+            mem.M["3.0"] = 0;
+        }
+        if ((mem.I["1.0"] && mem.I["1.1"]) || mem.M["1.0"]) {
+            if (mem.M["3.1"]) log("解锁流程结束。");
+            mem.M["3.1"] = 0;
+        }
+    }
+
+    function computeOutputs() {
+        for (const key of Object.keys(mem.Q)) mem.Q[key] = 0;
+        mem.Q["12.3"] = 1;
+
+        if (mem.I["1.6"]) {
+            // 手动模式：M30.x 维持泵/锁电机；V31.x 直驱阀（输出块段3-6 自动支路被 I1.6/ 旁路）
+            mem.Q["0.0"] = bool(mem.M["30.0"]);
+            mem.Q["0.1"] = bool(mem.M["30.1"]);
+            mem.Q["0.2"] = bool(mem.M["30.2"]);
+            mem.Q["0.3"] = bool(mem.M["30.3"]);
+            mem.Q["0.4"] = bool(mem.V["31.0"]);
+            mem.Q["0.5"] = bool(mem.V["31.1"]);
+            mem.Q["0.6"] = bool(mem.V["31.2"]);
+            mem.Q["0.7"] = bool(mem.V["31.3"]);
+            mem.Q["1.0"] = bool(mem.V["31.4"]);
+            mem.Q["1.1"] = bool(mem.V["31.5"]);
+            mem.Q["1.2"] = bool(mem.V["31.6"]);
+            mem.Q["1.3"] = bool(mem.V["31.7"]);
+            mem.Q["12.2"] = bool(mem.Q["0.0"] || mem.Q["0.1"] || mem.Q["0.2"] || mem.Q["0.3"]);
+            mem.Q["12.4"] = bool(mem.M["1.0"]);
+            return;
+        }
+
+        const t37Done = timerDone("T37", mem.VW108);
+
+        if (!mem.M["1.0"]) {
+            mem.Q["0.0"] = bool(mem.M["2.0"] || mem.M["2.1"] || mem.M["2.2"]);
+            mem.Q["0.1"] = bool(mem.M["2.0"] || mem.M["2.1"] || mem.M["2.3"]);
+            mem.Q["0.2"] = bool((mem.M["3.0"] && !mem.I["0.6"]) || (mem.M["3.1"] && !mem.I["1.0"]));
+            mem.Q["0.3"] = bool((mem.M["3.0"] && !mem.I["0.7"]) || (mem.M["3.1"] && !mem.I["1.1"]));
+            mem.Q["1.0"] = bool(mem.M["3.0"] && timerDone("T40", 30) && !mem.I["0.6"]);
+            mem.Q["1.2"] = bool(mem.M["3.0"] && timerDone("T40", 30) && !mem.I["0.7"]);
+            mem.Q["1.1"] = bool(mem.M["3.1"] && timerDone("T41", 30) && !mem.I["1.0"]);
+            mem.Q["1.3"] = bool(mem.M["3.1"] && timerDone("T41", 30) && !mem.I["1.1"]);
+        }
+
+        // 输出段3/4：M2.0 支路串 VD200<R VD100；段5/6：M2.1 串 VD200>R VD104（自截止）
+        const leftOpenRequest =
+            t37Done && !mem.M["1.6"] && !mem.M["1.0"] &&
+            ((mem.M["2.0"] && mem.VD200 < mem.VD100) || mem.M["2.2"]);
+        const rightOpenRequest =
+            t37Done && !mem.M["1.7"] && !mem.M["1.0"] &&
+            ((mem.M["2.0"] && mem.VD204 < mem.VD100) || mem.M["2.3"]);
+        const leftCloseRequest =
+            t37Done && !mem.M["1.6"] && !mem.M["1.0"] &&
+            mem.M["2.1"] && mem.VD200 > mem.VD104;
+        const rightCloseRequest =
+            t37Done && !mem.M["1.7"] && !mem.M["1.0"] &&
+            mem.M["2.1"] && mem.VD204 > mem.VD104;
+
+        mem.Q["0.4"] = bool(leftOpenRequest && !mem.Q["0.5"]);
+        mem.Q["0.5"] = bool(leftCloseRequest && !mem.Q["0.4"]);
+        mem.Q["0.6"] = bool(rightOpenRequest && !mem.Q["0.7"]);
+        mem.Q["0.7"] = bool(rightCloseRequest && !mem.Q["0.6"]);
+
+        if (!mem.M["1.0"]) {
+            const leftDecel =
+                (mem.M["2.0"] && mem.VD400 >= mem.VD112) ||
+                (mem.M["2.1"] && mem.VD404 >= mem.VD112);
+            const rightDecel =
+                (mem.M["2.0"] && mem.VD404 >= mem.VD112) ||
+                (mem.M["2.1"] && mem.VD400 >= mem.VD112);
+
+            mem.Q["12.0"] = bool(leftDecel);
+            mem.Q["12.1"] = bool(rightDecel);
+        }
+
+        mem.Q["12.2"] = bool(mem.Q["0.0"] || mem.Q["0.1"] || mem.Q["0.2"] || mem.Q["0.3"]);
+        mem.Q["12.4"] = bool(mem.M["1.0"]);
+    }
+
+    function moveGatePhysics() {
+        if (simMotionHold.mode === "open" || simMotionHold.mode === "close") {
+            return;
+        }
+
+        const leftSpeedBase = mem.Q["12.0"] ? PHYS.moveSlow : PHYS.moveFast;
+        const rightSpeedBase = mem.Q["12.1"] ? PHYS.moveSlow : PHYS.moveFast;
+
+        let leftSpeed = 0;
+        let rightSpeed = 0;
+
+        if (mem.Q["0.0"] && mem.Q["0.4"]) leftSpeed += leftSpeedBase;
+        if (mem.Q["0.0"] && mem.Q["0.5"]) leftSpeed -= PHYS.moveFast;
+        if (mem.Q["0.1"] && mem.Q["0.6"]) rightSpeed += rightSpeedBase;
+        if (mem.Q["0.1"] && mem.Q["0.7"]) rightSpeed -= PHYS.moveFast;
+
+        if (pulses.openBiasLeft > 0 && leftSpeed > 0) {
+            leftSpeed += pulses.openBiasLeft;
+            pulses.openBiasLeft = Math.max(0, pulses.openBiasLeft - 1);
+        }
+        if (pulses.openBiasRight > 0 && rightSpeed > 0) {
+            rightSpeed += pulses.openBiasRight;
+            pulses.openBiasRight = Math.max(0, pulses.openBiasRight - 1);
+        }
+
+        mem.VD208 = clamp(mem.VD208 + leftSpeed, mem.VD104 + mem.VD216, mem.VD100 + mem.VD216);
+        mem.VD212 = clamp(mem.VD212 + rightSpeed, mem.VD104 + mem.VD220, mem.VD100 + mem.VD220);
+    }
+
+    function processEdgeLogs() {
+        const t37Done = timerDone("T37", mem.VW108);
+        if (t37Done && !transitionState.t37Done) {
+            log("T37 建压完成，允许主方向阀动作。");
+        }
+        transitionState.t37Done = t37Done;
+
+        if (mem.Q["12.0"] && !transitionState.q120) {
+            log(`左侧纠偏条件达到 VD112=${mem.VD112.toFixed(2)}m，左减速阀 Q12.0 动作。`);
+        }
+        transitionState.q120 = !!mem.Q["12.0"];
+
+        if (mem.Q["12.1"] && !transitionState.q121) {
+            log(`右侧纠偏条件达到 VD112=${mem.VD112.toFixed(2)}m，右减速阀 Q12.1 动作。`);
+        }
+        transitionState.q121 = !!mem.Q["12.1"];
+
+        if (mem.M["1.6"] && !transitionState.m16) {
+            log(`左侧暂停条件超过 VD116=${mem.VD116.toFixed(2)}m，置位 M1.6 左暂停。`);
+        }
+        if (!mem.M["1.6"] && transitionState.m16) {
+            log(`左侧暂停条件回落至 VD112=${mem.VD112.toFixed(2)}m 内，复位 M1.6。`);
+        }
+        transitionState.m16 = !!mem.M["1.6"];
+
+        if (mem.M["1.7"] && !transitionState.m17) {
+            log(`右侧暂停条件超过 VD116=${mem.VD116.toFixed(2)}m，置位 M1.7 右暂停。`);
+        }
+        if (!mem.M["1.7"] && transitionState.m17) {
+            log(`右侧暂停条件回落至 VD112=${mem.VD112.toFixed(2)}m 内，复位 M1.7。`);
+        }
+        transitionState.m17 = !!mem.M["1.7"];
+
+        if (mem.M["2.2"] && !transitionState.m22) {
+            log(`左补压启动：M4.0 已允许补压，且 VD200=${mem.VD200.toFixed(2)}m 到达左触发线 VD516=${mem.VD516.toFixed(2)}m。`);
+        }
+        transitionState.m22 = !!mem.M["2.2"];
+
+        if (mem.M["2.3"] && !transitionState.m23) {
+            log(`右补压启动：M4.0 已允许补压，且 VD204=${mem.VD204.toFixed(2)}m 到达右触发线 VD520=${mem.VD520.toFixed(2)}m。`);
+        }
+        transitionState.m23 = !!mem.M["2.3"];
+
+        if (mem.M["4.0"] && !transitionState.m40) {
+            log("M4.0 置位：开门到位后允许补压，并允许插销锁定。");
+        }
+        if (!mem.M["4.0"] && transitionState.m40) {
+            log("M4.0 复位：关门/锁定/故障/手动取消补压和锁定许可。");
+        }
+        transitionState.m40 = !!mem.M["4.0"];
+
+        if (mem.M["1.0"] && !transitionState.m10) {
+            log("系统故障成立，M1.0 置位。");
+        }
+        transitionState.m10 = !!mem.M["1.0"];
+    }
+
+    function renderFlowStatus() {
+        el.flowGrid.innerHTML = flowStatusDefs.map((item) => {
+            let active = false;
+            let fault = false;
+            let valueText = "未动作";
+
+            if (item.type === "mode") {
+                active = true;
+                valueText = mem.I["1.6"] ? "手动" : "自动";
+            } else {
+                active = !!mem.M[item.key];
+                fault = !!item.fault && active;
+                valueText = active ? "成立" : "未动作";
+            }
+
+            const classes = ["flow-card"];
+            if (fault) classes.push("fault-active");
+            else if (active) classes.push("active");
+
+            return `<div class="${classes.join(" ")}"><div class="flow-name">${item.label} ${item.text || ""}</div><div class="flow-value">${valueText}</div></div>`;
+        }).join("");
+    }
+
+    function setLampState(rowEl, on, color) {
+        const lamp = rowEl.querySelector(".lamp");
+        lamp.className = "lamp" + (on ? ` ${color}` : "");
+    }
+
+    function renderActuatorStatus() {
+        for (const [id, def] of Object.entries(actuatorLampDefs)) {
+            const row = document.getElementById(id);
+            if (!row) continue;
+            const source = def.kind === "Q" ? mem.Q : mem.M;
+            setLampState(row, !!source[def.key], def.color);
+        }
+    }
+
+    function updateIndicators() {
+        const signedBias = mem.VD200 - mem.VD204;
+        el.left.textContent = mem.VD200.toFixed(2);
+        el.right.textContent = mem.VD204.toFixed(2);
+        el.bias.textContent = signedBias.toFixed(2);
+
+        el.openStatus.style.display = mem.M["2.0"] ? "block" : "none";
+        el.closeStatus.style.display = mem.M["2.1"] ? "block" : "none";
+
+        const gateTravel = 170 * (mem.VD200 / Math.max(1, mem.VD100));
+        el.gate.style.transform = `translateY(${-gateTravel}px)`;
+
+        const leftLocked = mem.I["0.6"] === 1;
+        const rightLocked = mem.I["0.7"] === 1;
+        const leftUnlocked = mem.I["1.0"] === 1;
+        const rightUnlocked = mem.I["1.1"] === 1;
+
+        el.pinLeft.className = "pin-indicator" + (leftLocked ? " locked" : leftUnlocked ? " unlocked" : "");
+        el.pinRight.className = "pin-indicator" + (rightLocked ? " locked" : rightUnlocked ? " unlocked" : "");
+        el.lampLock.className = "lamp" + (leftLocked && rightLocked ? " red" : "");
+        el.lampUnlock.className = "lamp" + (leftUnlocked && rightUnlocked ? " green" : "");
+
+        const v20_2 = bool(leftLocked && rightLocked);
+        const v20_3 = bool(leftUnlocked && rightUnlocked);
+        const v20_4 = bool(mem.VD200 >= mem.VD500);
+        const v20_5 = bool(mem.VD204 >= mem.VD504);
+        const v20_6 = bool(mem.VD200 <= mem.VD508);
+        const v20_7 = bool(mem.VD204 <= mem.VD512);
+
+        el.openReady.style.background = v20_4 && v20_5 ? "#ffe100" : "#ffffff";
+        el.closeReady.style.background = v20_6 && v20_7 ? "#ffe100" : "#ffffff";
+        el.simLeftPos.max = String(mem.VD100);
+        el.simRightPos.max = String(mem.VD100);
+        el.simLeftPos.min = String(mem.VD104);
+        el.simRightPos.min = String(mem.VD104);
+        el.simLeftPos.value = mem.VD200.toFixed(2);
+        el.simRightPos.value = mem.VD204.toFixed(2);
+        el.simLeftPosText.textContent = `${mem.VD200.toFixed(2)}m`;
+        el.simRightPosText.textContent = `${mem.VD204.toFixed(2)}m`;
+
+        const stateEntries = [
+            ["当前流程状态", flowSummary()],
+            ["当前模式", mem.I["1.6"] ? "手动" : "自动"],
+            ["M1.0", mem.M["1.0"]],
+            ["T37", `${timers.T37}/${mem.VW108}`],
+            ["T38/T39", `${timers.T38}/10 , ${timers.T39}/10`],
+            ["T44/T45", `${timers.T44}/500 , ${timers.T45}/500`],
+            ["T40/T41", `${timers.T40}/30 , ${timers.T41}/30`],
+            ["VD400/VD404", `${mem.VD400.toFixed(2)}/${mem.VD404.toFixed(2)} m`],
+            ["V20.2/V20.3", `${v20_2}/${v20_3}`],
+            ["M4.0", mem.M["4.0"]],
+            ["VD516/VD520", `${mem.VD516.toFixed(2)}/${mem.VD520.toFixed(2)} m`],
+            ["保持区", "VB100~VB299"]
+        ];
+        el.stateKv.innerHTML = stateEntries.map(([k, v]) => `<div>${k}</div><div>${v}</div>`).join("");
+
+        const items = [];
+        for (const [k, v] of Object.entries(mem.I)) items.push(renderIo(`I${k}`, v, k === "0.3" && v === 0));
+        for (const [k, v] of Object.entries(mem.Q)) items.push(renderIo(`Q${k}`, v, false));
+        for (const [k, v] of Object.entries(mem.M)) items.push(renderIo(`M${k}`, v, k === "1.0" && v === 1));
+        el.ioGrid.innerHTML = items.join("");
+
+        renderFlowStatus();
+        renderActuatorStatus();
+        renderIndicatorRow(v20_4, v20_5, v20_6, v20_7);
+        renderFaultTags();
+        renderManualPanel();
+        el.btnToggleMode.textContent = mem.I["1.6"] ? "切到自动模式" : "切到手动模式";
+        el.simOpenHold.classList.toggle("active-sim", simMotionHold.mode === "open");
+        el.simCloseHold.classList.toggle("active-sim", simMotionHold.mode === "close");
+    }
+
+    function setLamp(id, on, color) {
+        const el2 = document.getElementById(id);
+        if (!el2) return;
+        el2.className = "lamp" + (on ? ` ${color}` : "");
+    }
+
+    function renderIndicatorRow(v204, v205, v206, v207) {
+        setLamp("ind-v204", v204, "yellow");
+        setLamp("ind-v205", v205, "yellow");
+        setLamp("ind-v206", v206, "yellow");
+        setLamp("ind-v207", v207, "yellow");
+        setLamp("ind-q122", !!mem.Q["12.2"], "green");
+        setLamp("ind-q123", !!mem.Q["12.3"], "green");
+        setLamp("ind-q124", !!mem.Q["12.4"], "red");
+    }
+
+    const FAULT_DEFS = [
+        { key: "0.3", label: "I0.3 急停", trigger: 0 },
+        { key: "1.2", label: "I1.2 左主热继", trigger: 1 },
+        { key: "1.3", label: "I1.3 右主热继", trigger: 1 },
+        { key: "1.4", label: "I1.4 左锁热继", trigger: 1 },
+        { key: "1.5", label: "I1.5 右锁热继", trigger: 1 }
+    ];
+
+    function renderFaultTags() {
+        const host = document.getElementById("fault-tags");
+        if (!host) return;
+        host.innerHTML = FAULT_DEFS.map(d => {
+            const active = mem.I[d.key] === d.trigger;
+            return `<div class="fault-tag${active ? " active" : ""}">${d.label}${active ? " ●" : ""}</div>`;
+        }).join("");
+    }
+
+    function renderManualPanel() {
+        const host = document.getElementById("manual-panel");
+        if (!host) return;
+        const active = mem.I["1.6"] === 1;
+        host.classList.toggle("disabled", !active);
+        // M30.x 起停按钮高亮
+        const m30 = ["30.0","30.1","30.2","30.3"];
+        const pairs = [["m-v30-0","m-v30-1"],["m-v30-2","m-v30-3"],["m-v30-4","m-v30-5"],["m-v30-6","m-v30-7"]];
+        m30.forEach((k, i) => {
+            const onBtn = document.getElementById(pairs[i][0]);
+            const offBtn = document.getElementById(pairs[i][1]);
+            if (onBtn) onBtn.classList.toggle("on", !!mem.M[k]);
+            if (offBtn) offBtn.classList.toggle("on", !mem.M[k]);
+        });
+        // V31.x 阀点动按钮高亮
+        for (let i = 0; i < 8; i++) {
+            const btn = document.getElementById(`m-v31-${i}`);
+            if (btn) btn.classList.toggle("held", !!mem.V[`31.${i}`]);
+        }
+    }
+
+    function renderIo(label, value, fault) {
+        const classes = ["io-item"];
+        if (value) classes.push("on");
+        if (fault) classes.push("fault");
+        return `<div class="${classes.join(" ")}">${label}: ${value}</div>`;
+    }
+
+    function flowSummary() {
+        const parts = [];
+        if (mem.M["2.0"]) parts.push("开门");
+        if (mem.M["2.1"]) parts.push("关门");
+        if (mem.M["2.2"]) parts.push("左补压");
+        if (mem.M["2.3"]) parts.push("右补压");
+        if (mem.M["3.0"]) parts.push("锁定");
+        if (mem.M["3.1"]) parts.push("解锁");
+        return parts.length ? parts.join(" / ") : "空闲";
+    }
+
+    function scan() {
+        scanCount += 1;
+        applyPhysicalLeak();
+        updateDerivedValues();
+        processFaultLogic();
+        processManualZero();
+        processManualLatches();
+        processAutoStart();
+        processLockUnlockFlow();
+        processStop();
+        processCompensationPermit();
+        processCompensationTrigger();
+        processCompensationTimeout();
+        processCompensationFinish();
+        processT37();
+        processSyncPause();
+        computeOutputs();
+        moveGatePhysics();
+        lockMotorAndValvePhysics();
+        updateDerivedValues();
+        processOpenCloseCompletion();
+        processEdgeLogs();
+        updateIndicators();
+        clearPulses();
+    }
+
+    function wireUi() {
+        document.getElementById("btn-open").addEventListener("click", () => pulseV("10.0"));
+        document.getElementById("btn-close").addEventListener("click", () => pulseV("10.1"));
+        document.getElementById("btn-stop").addEventListener("click", () => pulseV("10.5"));
+        document.getElementById("btn-reset").addEventListener("click", () => pulseV("10.4"));
+        document.getElementById("btn-lock").addEventListener("click", () => pulseV("10.2"));
+        document.getElementById("btn-unlock").addEventListener("click", () => pulseV("10.3"));
+
+        // I0.0/I0.1/I0.2 外部按钮一周期
+        document.getElementById("sim-i00").addEventListener("click", () => {
+            mem.I["0.0"] = 1; pulses.i00 = 1; log("外部按钮 I0.0 一周期触发。");
+        });
+        document.getElementById("sim-i01").addEventListener("click", () => {
+            mem.I["0.1"] = 1; pulses.i01 = 1; log("外部按钮 I0.1 一周期触发。");
+        });
+        document.getElementById("sim-i02").addEventListener("click", () => {
+            mem.I["0.2"] = 1; pulses.i02 = 1; log("外部按钮 I0.2 一周期触发。");
+        });
+
+        // 手动面板：V30.x 一周期 SET/R 类型
+        const v30Map = [
+            ["m-v30-0","30.0"],["m-v30-1","30.1"],
+            ["m-v30-2","30.2"],["m-v30-3","30.3"],
+            ["m-v30-4","30.4"],["m-v30-5","30.5"],
+            ["m-v30-6","30.6"],["m-v30-7","30.7"]
+        ];
+        v30Map.forEach(([id, key]) => {
+            const b = document.getElementById(id);
+            if (b) b.addEventListener("click", () => pulseV(key));
+        });
+
+        // 手动面板：V31.x 阀点动（按下=1，松开=0）
+        const v31List = ["31.0","31.1","31.2","31.3","31.4","31.5","31.6","31.7"];
+        v31List.forEach((key, i) => {
+            const b = document.getElementById(`m-v31-${i}`);
+            if (!b) return;
+            const down = (e) => { e.preventDefault(); if (mem.I["1.6"]) mem.V[key] = 1; };
+            const up = (e) => { e.preventDefault(); mem.V[key] = 0; };
+            b.addEventListener("mousedown", down);
+            b.addEventListener("mouseup", up);
+            b.addEventListener("mouseleave", up);
+            b.addEventListener("touchstart", down);
+            b.addEventListener("touchend", up);
+        });
+
+        // 手动面板：V11.0/V11.1 置零一周期
+        document.getElementById("m-v11-0").addEventListener("click", () => {
+            if (!mem.I["1.6"]) { log("置零仅限手动模式。"); return; }
+            pulseV("11.0");
+        });
+        document.getElementById("m-v11-1").addEventListener("click", () => {
+            if (!mem.I["1.6"]) { log("置零仅限手动模式。"); return; }
+            pulseV("11.1");
+        });
+        el.btnToggleMode.addEventListener("click", () => {
+            if (!mem.I["1.6"]) {
+                simMotionHold.mode = "";
+            }
+            mem.I["1.6"] = mem.I["1.6"] ? 0 : 1;
+            log(`模式切换：当前模式为${mem.I["1.6"] ? "手动" : "自动"}。`);
+        });
+
+        document.getElementById("btn-apply-params").addEventListener("click", () => {
+            mem.VD100 = clamp(Number(el.pVD100.value) || 3.0, 0.1, PHYS.gateMax);
+            mem.VD104 = clamp(Number(el.pVD104.value) || 0, 0, Math.max(0, mem.VD100 - 0.1));
+            mem.VW108 = clamp(Number(el.pVW108.value) || 30, 1, 600);
+            mem.VD112 = clamp(Number(el.pVD112.value) || 0.05, 0.01, 0.5);
+            mem.VD116 = clamp(Number(el.pVD116.value) || 0.10, mem.VD112 + 0.01, 0.7);
+            mem.VD120 = clamp(Number(el.pVD120.value) || 0.10, 0.01, 0.5);
+            mem.VD208 = clamp(mem.VD208, mem.VD104 + mem.VD216, mem.VD100 + mem.VD216);
+            mem.VD212 = clamp(mem.VD212, mem.VD104 + mem.VD220, mem.VD100 + mem.VD220);
+            updateDerivedValues();
+            saveParamsToStorage();
+            log("参数已更新（已写保持区）。");
+            syncParameterInputs();
+        });
+
+        document.getElementById("sim-leak-left").addEventListener("click", () => {
+            pulses.leakLeft = 0.10;
+            log("模拟左缸静止内泄：左缸位置下滑 0.10m。");
+        });
+        document.getElementById("sim-leak-right").addEventListener("click", () => {
+            pulses.leakRight = 0.10;
+            log("模拟右缸静止内泄：右缸位置下滑 0.10m。");
+        });
+        document.getElementById("sim-sync-left").addEventListener("click", () => {
+            pulses.openBiasLeft = 0.03;
+            log("模拟左缸超前。");
+        });
+        document.getElementById("sim-sync-right").addEventListener("click", () => {
+            pulses.openBiasRight = 0.03;
+            log("模拟右缸超前。");
+        });
+        document.getElementById("sim-estop").addEventListener("click", () => {
+            mem.I["0.3"] = 0;
+            log("触发急停 I0.3=0。");
+        });
+        document.getElementById("sim-thermal-main").addEventListener("click", () => {
+            mem.I["1.2"] = 1;
+            mem.I["1.3"] = 1;
+            log("触发主泵热继 I1.2/I1.3。");
+        });
+        document.getElementById("sim-thermal-lock").addEventListener("click", () => {
+            mem.I["1.4"] = 1;
+            mem.I["1.5"] = 1;
+            log("触发锁泵热继 I1.4/I1.5。");
+        });
+        document.getElementById("sim-clear-fault-inputs").addEventListener("click", () => {
+            mem.I["0.3"] = 1;
+            mem.I["1.2"] = 0;
+            mem.I["1.3"] = 0;
+            mem.I["1.4"] = 0;
+            mem.I["1.5"] = 0;
+            log("已恢复急停与热继输入。");
+        });
+
+        el.simOpenHold.addEventListener("click", () => {
+            if (mem.I["1.6"]) {
+                log("模拟开门保持仅允许在自动模式下使用。");
+                return;
+            }
+            if (mem.M["1.0"]) {
+                log("当前存在系统故障，不能进入模拟开门保持。");
+                return;
+            }
+            if (!mem.I["1.0"] || !mem.I["1.1"]) {
+                log("插销未解锁到位，不能进入模拟开门保持。");
+                return;
+            }
+            simMotionHold.mode = simMotionHold.mode === "open" ? "" : "open";
+            mem.M["2.0"] = simMotionHold.mode === "open" ? 1 : 0;
+            mem.M["2.1"] = 0;
+            mem.M["2.2"] = 0;
+            mem.M["2.3"] = 0;
+            log(simMotionHold.mode === "open"
+                ? "进入模拟开门保持：只点亮开门流程和输出，位置由滑块手动调整。"
+                : "退出模拟开门保持。");
+        });
+
+        el.simCloseHold.addEventListener("click", () => {
+            if (mem.I["1.6"]) {
+                log("模拟关门保持仅允许在自动模式下使用。");
+                return;
+            }
+            if (mem.M["1.0"]) {
+                log("当前存在系统故障，不能进入模拟关门保持。");
+                return;
+            }
+            if (!mem.I["1.0"] || !mem.I["1.1"]) {
+                log("插销未解锁到位，不能进入模拟关门保持。");
+                return;
+            }
+            simMotionHold.mode = simMotionHold.mode === "close" ? "" : "close";
+            mem.M["2.1"] = simMotionHold.mode === "close" ? 1 : 0;
+            mem.M["2.0"] = 0;
+            mem.M["2.2"] = 0;
+            mem.M["2.3"] = 0;
+            log(simMotionHold.mode === "close"
+                ? "进入模拟关门保持：只点亮关门流程和输出，位置由滑块手动调整。"
+                : "退出模拟关门保持。");
+        });
+
+        el.simLeftPos.addEventListener("input", () => {
+            if (mem.I["1.6"]) {
+                log("当前位置滑块仅允许在自动模式下调整。");
+                el.simLeftPos.value = mem.VD200.toFixed(2);
+                return;
+            }
+            const target = clamp(Number(el.simLeftPos.value) || 0, mem.VD104, mem.VD100);
+            mem.VD208 = target + mem.VD216;
+            updateDerivedValues();
+            el.simLeftPosText.textContent = `${mem.VD200.toFixed(2)}m`;
+        });
+
+        el.simRightPos.addEventListener("input", () => {
+            if (mem.I["1.6"]) {
+                log("当前位置滑块仅允许在自动模式下调整。");
+                el.simRightPos.value = mem.VD204.toFixed(2);
+                return;
+            }
+            const target = clamp(Number(el.simRightPos.value) || 0, mem.VD104, mem.VD100);
+            mem.VD212 = target + mem.VD220;
+            updateDerivedValues();
+            el.simRightPosText.textContent = `${mem.VD204.toFixed(2)}m`;
+        });
+
+        el.simLeftPos.addEventListener("change", () => {
+            if (!mem.I["1.6"]) {
+                log(`测试拖动：左油缸位置手动调整到 VD200=${mem.VD200.toFixed(2)}m。`);
+            }
+        });
+
+        el.simRightPos.addEventListener("change", () => {
+            if (!mem.I["1.6"]) {
+                log(`测试拖动：右油缸位置手动调整到 VD204=${mem.VD204.toFixed(2)}m。`);
+            }
+        });
+    }
+
+    function syncParameterInputs() {
+        el.pVD100.value = mem.VD100.toFixed(2);
+        el.pVD104.value = mem.VD104.toFixed(2);
+        el.pVW108.value = String(mem.VW108);
+        el.pVD112.value = mem.VD112.toFixed(2);
+        el.pVD116.value = mem.VD116.toFixed(2);
+        el.pVD120.value = mem.VD120.toFixed(2);
+    }
+
+    function loadParamsFromStorage() {
+        try {
+            const raw = localStorage.getItem("ykea_params");
+            if (!raw) return;
+            const p = JSON.parse(raw);
+            if (typeof p.VD100 === "number") mem.VD100 = p.VD100;
+            if (typeof p.VD104 === "number") mem.VD104 = p.VD104;
+            if (typeof p.VW108 === "number") mem.VW108 = p.VW108;
+            if (typeof p.VD112 === "number") mem.VD112 = p.VD112;
+            if (typeof p.VD116 === "number") mem.VD116 = p.VD116;
+            if (typeof p.VD120 === "number") mem.VD120 = p.VD120;
+        } catch (e) { /* ignore */ }
+    }
+
+    function saveParamsToStorage() {
+        try {
+            localStorage.setItem("ykea_params", JSON.stringify({
+                VD100: mem.VD100, VD104: mem.VD104, VW108: mem.VW108,
+                VD112: mem.VD112, VD116: mem.VD116, VD120: mem.VD120
+            }));
+        } catch (e) { /* ignore */ }
+    }
+
+    function init() {
+        loadParamsFromStorage();
+        mem.VD208 = 0;
+        mem.VD212 = 0;
+        mem.VD216 = 0;
+        mem.VD220 = 0;
+        lockPosLeft = 100;
+        lockPosRight = 100;
+        updateLockSensors();
+        updateDerivedValues();
+        syncParameterInputs();
+        wireUi();
+        updateIndicators();
+        log("演示系统已启动。");
+        setInterval(scan, SCAN_MS);
+    }
+
+    init();
+})();
+</script>
+</body>
+</html>
